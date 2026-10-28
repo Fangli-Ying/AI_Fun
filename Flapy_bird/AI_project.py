@@ -1,7 +1,6 @@
 import random
 import sys
 import pygame
-import pygame.freetype
 from pygame.locals import *
 import numpy
 import matplotlib.pyplot as plt
@@ -11,16 +10,17 @@ SH = 511
 BASEY = SH * 0.8
 IMAGES = {}
 
-# 不要调用 pygame.font.init()！SysFont模块会崩溃，改用freetype
 pygame.init()
 WINDOW = pygame.display.set_mode((SW, SH))
 
-# 使用 freetype 字体，绕开SysFont的bug
-Font = pygame.freetype.SysFont(None, 30)
+# =========核心修复：不用SysFont，使用pygame内置字体，不扫描系统字体=========
+Font = pygame.font.Font(None, 30)
 
 BIRD = 'imgs/bird1.png'
 BG = 'imgs/bg.png'
 PIPE = 'imgs/pipe.png'
+BASE = 'imgs/base.png'
+
 Q = numpy.zeros((7, 21, 2), dtype=float)
 FPS = 32
 
@@ -39,11 +39,10 @@ def static():
         WINDOW.blit(IMAGES['background'], (0, 0))
         WINDOW.blit(IMAGES['bird'], (birdxpos, birdypos))
         WINDOW.blit(IMAGES['base'], (basex, BASEY))
-        # freetype渲染文字，返回(surface, rect)
-        text_surf1, _ = Font.render("AI PROJECT", (255, 255, 255))
-        text_surf2, _ = Font.render("HARKISHAN SINGH", (255, 255, 255))
-        WINDOW.blit(text_surf1, (SW / 2, SH / 2))
-        WINDOW.blit(text_surf2, (10, 50))
+        text1 = Font.render("AI PROJECT", 1, (255, 255, 255))
+        text2 = Font.render("HARKISHAN SINGH", 1, (255, 255, 255))
+        WINDOW.blit(text1, (SW / 2, SH / 2))
+        WINDOW.blit(text2, (10, 50))
         pygame.display.update()
         FPSCLOCK.tick(FPS)
 
@@ -69,7 +68,6 @@ def game_start(generation, x, y):
     pipeVelx = -4
     birdyvel = -9
     birdymaxvel = 10
-    birdyvelmin = -8
     birdyacc = 1
     playerFlapAccv = -8
     playerFlapped = False
@@ -139,10 +137,9 @@ def game_start(generation, x, y):
         WINDOW.blit(IMAGES['base'], (basex1, BASEY))
         WINDOW.blit(IMAGES['base'], (basex2, BASEY))
 
-        # freetype绘制分数与代数
-        text1, rect1 = Font.render(f"Score: {score}", (255, 255, 255))
-        text2, rect2 = Font.render(f"Generation: {generation}", (255, 255, 255))
-        WINDOW.blit(text1, (SW - 10 - rect1.width, 10))
+        text1 = Font.render("Score: " + str(score), 1, (255, 255, 255))
+        text2 = Font.render("Generation: " + str(generation), 1, (255, 255, 255))
+        WINDOW.blit(text1, (SW - 10 - text1.get_width(), 10))
         WINDOW.blit(text2, (0, 0))
 
         WINDOW.blit(IMAGES['bird'], (birdxpos, birdypos))
@@ -188,6 +185,7 @@ def convert(birdxpos, birdypos, bttm_pipes):
     y = bttm_pipes[0]['y'] - birdypos
     if y < 0:
         y = abs(y) + 408
+    # 边界保护，防止数组越界
     x_idx = max(0, min(6, int(x / 40 - 1)))
     y_idx = max(0, min(20, int(y / 40)))
     return x_idx, y_idx
@@ -203,7 +201,7 @@ def Q_update(x_prev, y_prev, jump, reward, x_new, y_new):
 if __name__ == "__main__":
     FPSCLOCK = pygame.time.Clock()
     pygame.display.set_caption("AI PROJECT")
-    IMAGES['base'] = pygame.image.load('imgs/base.png').convert_alpha()
+    IMAGES['base'] = pygame.image.load(BASE).convert_alpha()
     IMAGES['pipe'] = (pygame.transform.rotate(pygame.image.load(PIPE).convert_alpha(), 180),
                       pygame.image.load(PIPE).convert_alpha())
     IMAGES['background'] = pygame.image.load(BG).convert()
